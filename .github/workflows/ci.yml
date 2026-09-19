@@ -21,6 +21,9 @@ jobs:
       - name: gofmt
         shell: bash
         run: |
+          git config core.autocrlf false
+          git config core.eol lf
+          git checkout-index --force --all
           bad=$(gofmt -l .)
           if [ -n "$bad" ]; then
             echo "$bad"
