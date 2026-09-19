@@ -1,0 +1,5 @@
+/khz
+*.exe
+*.test
+*.out
+.khz/receipts/
