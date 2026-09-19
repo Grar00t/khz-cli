@@ -65,3 +65,28 @@ jobs:
           $missing = Compare-Object $expect $cmds | Where-Object { $_.SideIndicator -eq '<=' }
           if ($missing) { throw "missing exports: $($missing.InputObject -join ', ')" }
           Get-KhzDoctor | Out-Null
+      - name: pester
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module Pester -MinimumVersion 5.0
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = './powershell/KHZ/KHZ.Tests.ps1'
+          $cfg.Run.Exit = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $cfg
+      - name: scriptanalyzer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
+            Write-Host 'PSScriptAnalyzer NOT_EXECUTED: module not installed'
+            exit 0
+          }
+          $issues = Invoke-ScriptAnalyzer -Path ./powershell/KHZ -Recurse
+          if ($issues) {
+            $issues | Format-Table -AutoSize
+            throw "PSScriptAnalyzer findings: $($issues.Count)"
+          }
+          Write-Host 'PSScriptAnalyzer: 0 findings'
+
