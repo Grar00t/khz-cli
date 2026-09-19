@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - name: gofmt
+        shell: bash
+        run: |
+          bad=$(gofmt -l .)
+          if [ -n "$bad" ]; then
+            echo "$bad"
+            exit 1
+          fi
+      - name: test
+        run: go test ./...
+      - name: vet
+        run: go vet ./...
+      - name: race
+        run: go test -race ./...
+
+  powershell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - name: build khz
+        run: go build -o khz.exe ./cmd/khz
+      - name: import module
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PATH = "$(Get-Location);$env:PATH"
+          Import-Module ./powershell/KHZ/KHZ.psd1
+          $cmds = (Get-Command -Module KHZ).Name | Sort-Object
+          $expect = @(
+            'Enable-KhzArabicAliases',
+            'Get-KhzDoctor',
+            'Get-KhzReceipt',
+            'Get-KhzStatus',
+            'Invoke-KhzCheck',
+            'Invoke-KhzRun',
+            'Test-KhzPolicy',
+            'Test-KhzReceipt'
+          )
+          $missing = Compare-Object $expect $cmds | Where-Object { $_.SideIndicator -eq '<=' }
+          if ($missing) { throw "missing exports: $($missing.InputObject -join ', ')" }
+          Get-KhzDoctor | Out-Null

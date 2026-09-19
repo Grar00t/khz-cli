@@ -1,0 +1,9 @@
+/khz
+/khz.exe
+/bin/
+/dist/
+*.test
+*.out
+*.exe
+.khz/receipts/
+.khz/checks/
