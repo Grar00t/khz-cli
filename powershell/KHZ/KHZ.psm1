@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 
 function Get-KhzExecutable {
     $cmd = Get-Command -Name khz -ErrorAction SilentlyContinue
@@ -60,8 +60,8 @@ function Invoke-KhzRun {
         [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
         [string[]]$Command
     )
-    $args = @('run', '--json', '--') + $Command
-    Invoke-KhzNative -KhzArgs $args -AsObject
+    $khzArgs = @('run', '--json', '--') + $Command
+    Invoke-KhzNative -KhzArgs $khzArgs -AsObject
 }
 
 function Invoke-KhzCheck {
@@ -72,8 +72,8 @@ function Invoke-KhzCheck {
         [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
         [string[]]$Command
     )
-    $args = @('check', '--name', $Name, '--json', '--') + $Command
-    Invoke-KhzNative -KhzArgs $args -AsObject
+    $khzArgs = @('check', '--name', $Name, '--json', '--') + $Command
+    Invoke-KhzNative -KhzArgs $khzArgs -AsObject
 }
 
 function Get-KhzReceipt {
@@ -112,6 +112,7 @@ function Get-KhzDoctor {
 
 function Enable-KhzArabicAliases {
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Documented export name')]
     param()
     $map = [ordered]@{
         'حالة' = 'Get-KhzStatus'

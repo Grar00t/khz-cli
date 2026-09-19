@@ -1,4 +1,4 @@
-# Pester tests for the KHZ module. Run when pwsh + Pester are available.
+﻿# Pester tests for the KHZ module. Run when pwsh + Pester are available.
 # This environment may not have PowerShell; CI on windows-latest imports the module.
 
 Describe 'KHZ module' {
