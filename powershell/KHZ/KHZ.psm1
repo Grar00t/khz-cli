@@ -122,7 +122,7 @@ function Enable-KhzArabicAliases {
     foreach ($alias in $map.Keys) {
         $existing = Get-Alias -Name $alias -ErrorAction SilentlyContinue
         if ($existing) {
-            Write-Error "alias '$alias' already exists -> $($existing.Definition); not overwritten"
+            Write-Warning "alias '$alias' already exists -> $($existing.Definition); not overwritten"
             continue
         }
         Set-Alias -Name $alias -Value $map[$alias] -Scope Global

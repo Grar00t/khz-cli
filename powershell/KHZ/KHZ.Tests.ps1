@@ -30,8 +30,10 @@ Describe 'KHZ module' {
             Remove-Item -Path 'Alias:حالة' -Force -ErrorAction SilentlyContinue
         }
         Set-Alias -Name 'حالة' -Value 'Get-Date' -Scope Global
-        { Enable-KhzArabicAliases } | Should -Not -Throw
+        $warn = $null
+        Enable-KhzArabicAliases -WarningVariable warn -WarningAction SilentlyContinue
         (Get-Alias -Name 'حالة').Definition | Should -Be 'Get-Date'
+        $warn | Should -Not -BeNullOrEmpty
         Remove-Item -Path 'Alias:حالة' -Force
     }
 }
