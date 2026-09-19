@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27.1'
+          cache: true
+      - name: Format gate
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+      - name: Test
+        run: go test ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Race
+        run: go test -race ./...
+
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: windows, goarch: amd64 }
+          - { goos: windows, goarch: arm64 }
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27.1'
+          cache: true
+      - name: Cross compile
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: go build ./cmd/khz
+
+  powershell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27.1'
+          cache: true
+      - name: Build KHZ
+        shell: pwsh
+        run: |
+          go build -o "$env:RUNNER_TEMP\khz.exe" .\cmd\khz
+          $env:RUNNER_TEMP | Out-File -FilePath $env:GITHUB_PATH -Append
+          "KHZ_BIN=$env:RUNNER_TEMP\khz.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Install test modules
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $issues = Invoke-ScriptAnalyzer -Path .\powershell\KHZ -Recurse -Severity Warning,Error
+          $issues | Format-Table
+          if ($issues) { throw 'PSScriptAnalyzer findings present' }
+      - name: Pester
+        shell: pwsh
+        run: Invoke-Pester .\powershell\tests -CI
