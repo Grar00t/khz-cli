@@ -157,7 +157,11 @@ func (a *app) cmdStatus(rest []string) int {
 	}
 	a.loadPolicyAllowColor()
 	snap := gitx.Probe(a.ctx, a.env.CWD)
-	checks, _ := checkstore.List(a.root.ChecksDir())
+	checks, err := checkstore.List(a.root.ChecksDir())
+	if err != nil {
+		a.errf("check store: %v", err)
+		return exitcode.Fail
+	}
 	pol := map[string]any{"present": false}
 	if _, err := os.Stat(a.root.PolicyPath()); err == nil {
 		res := policy.Check(a.root.PolicyPath(), snap)
@@ -167,6 +171,9 @@ func (a *app) cmdStatus(rest []string) int {
 			"protected_branch": res.ProtectedBranch,
 			"valid":            res.Valid,
 		}
+	} else if !os.IsNotExist(err) {
+		a.errf("policy: %v", err)
+		return exitcode.Fail
 	}
 	payload := map[string]any{
 		"khz_version": version.Version,
@@ -453,10 +460,17 @@ func (a *app) cmdBoard(rest []string) int {
 			detail = i18n.T(a.g.Lang, "protected")
 		}
 		rows = append(rows, board.Row{State: pr.Status, Name: "policy", Detail: detail})
-	} else {
+	} else if os.IsNotExist(err) {
 		rows = append(rows, board.Row{State: term.SKIP, Name: "policy", Detail: "not initialized"})
+	} else {
+		a.errf("policy: %v", err)
+		return exitcode.Fail
 	}
-	checks, _ := checkstore.List(a.root.ChecksDir())
+	checks, err := checkstore.List(a.root.ChecksDir())
+	if err != nil {
+		a.errf("check store: %v", err)
+		return exitcode.Fail
+	}
 	if len(checks) == 0 {
 		rows = append(rows, board.Row{State: term.SKIP, Name: "checks", Detail: i18n.T(a.g.Lang, "none")})
 	} else {
@@ -468,7 +482,11 @@ func (a *app) cmdBoard(rest []string) int {
 			})
 		}
 	}
-	ids, _ := receipt.List(a.root.ReceiptsDir())
+	ids, err := receipt.List(a.root.ReceiptsDir())
+	if err != nil {
+		a.errf("receipt store: %v", err)
+		return exitcode.Fail
+	}
 	last := ""
 	if len(ids) > 0 {
 		last = a.root.ReceiptsDir() + string(os.PathSeparator) + ids[len(ids)-1] + ".json"
