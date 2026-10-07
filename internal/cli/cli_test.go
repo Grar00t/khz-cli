@@ -127,6 +127,27 @@ func TestStatusJSON(t *testing.T) {
 	}
 }
 
+func TestStatusAndBoardFailOnCorruptCheckStore(t *testing.T) {
+	dir := repo(t)
+	checks := filepath.Join(dir, ".khz", "checks")
+	if err := os.MkdirAll(checks, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(checks, "broken.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, args := range [][]string{{"status", "--json"}, {"board", "--json"}} {
+		_, errb, code := runCLI(t, dir, args...)
+		if code != exitcode.Fail {
+			t.Fatalf("%v: expected fail, got %d stderr=%s", args, code, errb)
+		}
+		if !strings.Contains(errb, "check store:") {
+			t.Fatalf("%v: missing check-store error: %s", args, errb)
+		}
+	}
+}
+
 func TestRunAndCheckAndBoard(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git missing")
