@@ -1,6 +1,7 @@
 package atomicfile
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,5 +63,30 @@ func TestWriteFileTempIsNotTheTarget(t *testing.T) {
 		if e.Name() != "target.json" && len(e.Name()) > 0 {
 			t.Fatalf("leftover temp %q", e.Name())
 		}
+	}
+}
+
+func TestWriteFileReplaceFailurePreservesOriginal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "out.json")
+	if err := os.WriteFile(path, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	originalReplace := replaceFile
+	replaceFile = func(string, string) error {
+		return errors.New("fixture replace failure")
+	}
+	t.Cleanup(func() { replaceFile = originalReplace })
+
+	if err := WriteFile(path, []byte("replacement"), 0o644); err == nil {
+		t.Fatal("expected replacement failure")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "original" {
+		t.Fatalf("original target changed on failed replace: %q", b)
 	}
 }
