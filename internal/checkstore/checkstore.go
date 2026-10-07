@@ -2,6 +2,7 @@ package checkstore
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/Grar00t/khz-cli/internal/atomicfile"
 	"github.com/Grar00t/khz-cli/internal/receipt"
+	"github.com/Grar00t/khz-cli/internal/term"
 )
 
 // Record is the last named check written under .khz/checks/.
@@ -54,13 +56,22 @@ func List(dir string) ([]Record, error) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		b, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		path := filepath.Join(dir, e.Name())
+		b, err := os.ReadFile(path)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("read check %s: %w", e.Name(), err)
 		}
 		var rec Record
 		if err := json.Unmarshal(b, &rec); err != nil {
-			continue
+			return nil, fmt.Errorf("parse check %s: %w", e.Name(), err)
+		}
+		if rec.Name == "" {
+			return nil, fmt.Errorf("parse check %s: missing name", e.Name())
+		}
+		switch rec.Status {
+		case term.OK, term.WARN, term.FAIL, term.SKIP, term.INFO:
+		default:
+			return nil, fmt.Errorf("parse check %s: invalid status %q", e.Name(), rec.Status)
 		}
 		out = append(out, rec)
 	}
