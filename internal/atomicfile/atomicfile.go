@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 )
 
+var replaceFile = platformReplace
+
 // WriteFile writes data to path by creating a unique temp file in the same
 // directory, fsyncing, then renaming. On failure the original target is left
 // unchanged if it existed.
@@ -39,17 +41,8 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	if err := os.Chmod(tmp, perm); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		// Windows cannot rename over an existing file.
-		if err2 := os.Remove(path); err2 == nil || os.IsNotExist(err2) {
-			if err3 := os.Rename(tmp, path); err3 == nil {
-				ok = true
-				return nil
-			} else {
-				return fmt.Errorf("atomic rename: %w", err3)
-			}
-		}
-		return fmt.Errorf("atomic rename: %w", err)
+	if err := replaceFile(tmp, path); err != nil {
+		return fmt.Errorf("atomic replace: %w", err)
 	}
 	ok = true
 	return nil
